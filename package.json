@@ -1,14 +1,14 @@
 {
-  "name": "status-bar-clock",
+  "name": "status-bar-time-tracker",
   "main": "./lib/status-bar-clock",
-  "version": "2.0.4",
-  "description": "Display the current time inside the status bar",
+  "version": "0.0.1",
+  "description": "Display active working time in status bar. When you type something, time tracks, when you incative more than one minute, time stops.",
   "keywords": [
-    "clock",
+    "tracker",
     "time",
     "statusbar"
   ],
-  "repository": "https://github.com/wstucco/status-bar-clock",
+  "repository": "https://github.com/VRymarovich/status-bar-time-tracker",
   "license": "MIT",
   "engines": {
     "atom": ">=1.0.0 <2.0.0"
