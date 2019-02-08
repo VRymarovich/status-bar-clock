@@ -1,7 +1,7 @@
 {
   "name": "status-bar-time-tracker",
   "main": "./lib/status-bar-clock",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Display active working time in status bar. When you type something, time tracks, when you incative more than one minute, time stops.",
   "keywords": [
     "tracker",
