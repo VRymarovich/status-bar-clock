@@ -1,5 +1,5 @@
 class StatusBarClockView extends HTMLElement
-  countdown = 60
+  countdown = 300
   activeTime = 0
 
   init: ->
@@ -10,9 +10,9 @@ class StatusBarClockView extends HTMLElement
     @intervalId = setInterval @updateClock.bind(@), 1000
     atom.workspace.observeTextEditors (editor) ->
       editor.onDidSave ->
-        countdown = 60
+        countdown = 300
       editor.onDidStopChanging ->
-        countdown = 60
+        countdown = 300
 
   deactivate: ->
     clearInterval @intervalId
