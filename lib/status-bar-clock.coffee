@@ -7,6 +7,11 @@ module.exports = StatusBarClock =
       type: 'string'
       default: 'Remember last setting'
       enum: ['Remember last setting', 'Show on start', 'Don\'t show on start']
+    timerIdle:
+      description: 'Set inactive time in minutes. When user idles more than this time, the counter stops.'
+      type: 'integer'
+      minimum: 5
+      default: 10
 
   active: false
 
@@ -16,7 +21,7 @@ module.exports = StatusBarClock =
     @subscriptions = new CompositeDisposable
     # Register command that toggles this view
     @subscriptions.add atom.commands.add 'atom-workspace', 'status-bar-clock:toggle': => @toggle()
-
+    console.log @state
     @statusBarClockView = new StatusBarClockView()
     @statusBarClockView.init()
 
@@ -29,6 +34,7 @@ module.exports = StatusBarClock =
   serialize:->
     {
       activateOnStart: atom.config.get('status-bar-clock.activateOnStart'),
+      timerIdle: atom.config.get('status-bar-clock.timerIdle'),
       active: @active
     }
 
