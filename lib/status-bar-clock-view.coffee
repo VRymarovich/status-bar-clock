@@ -12,10 +12,10 @@ class StatusBarClockView extends HTMLElement
 
   constructor:->
 
-  init:(_timerIdle, _logfile) ->
-    logfile = _logfile
-    timerIdle = _timerIdle
-    console.log 'init'
+  init: ->
+    logfile = atom.config.get('status-bar-time-tracker.logfile')
+    timerIdle = atom.config.get('status-bar-time-tracker.timerIdle')
+    console.log 'init', logfile, timerIdle
     @disposables = new CompositeDisposable
     @classList.add('status-bar-clock', 'inline-block', 'icon-clock')
     #@activate()
@@ -24,6 +24,7 @@ class StatusBarClockView extends HTMLElement
     console.log 'activate'
     countdownTime = timerIdle*60
     countTime = []
+    console.log logfile
     fs.readFile(logfile,'utf-8', (err, data)->
       if err
         throw err

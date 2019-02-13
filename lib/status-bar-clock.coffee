@@ -29,7 +29,7 @@ module.exports = StatusBarClock =
     @subscriptions.add atom.commands.add 'atom-workspace', 'status-bar-clock:toggle': => @toggle()
     console.log state
     @statusBarClockView = new StatusBarClockView
-    @statusBarClockView.init(@state.timerIdle, @state.logfile)
+    @statusBarClockView.init()
 
   deactivate: ->
     console.log 'Clock was deactivated'
