@@ -13,6 +13,9 @@
   "engines": {
     "atom": ">=1.0.0 <2.0.0"
   },
+  "dependencies": {
+    "os-homedir": "^1.0.0"
+  },
   "consumedServices": {
     "status-bar": {
       "versions": {

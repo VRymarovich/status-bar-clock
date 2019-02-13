@@ -1,6 +1,8 @@
 {CompositeDisposable} = require 'atom'
 StatusBarClockView = require './status-bar-clock-view'
 
+home = require('os-homedir')
+
 module.exports = StatusBarClock =
   config:
     activateOnStart:
@@ -12,18 +14,22 @@ module.exports = StatusBarClock =
       type: 'integer'
       minimum: 5
       default: 10
+    logfile:
+      description: 'Set path to log file'
+      type: 'string'
+      default: home+'/atom_status_bar_log.csv'
 
   active: false
 
   activate: (state) ->
     @state = state
-
+    console.log 'activated'
     @subscriptions = new CompositeDisposable
     # Register command that toggles this view
     @subscriptions.add atom.commands.add 'atom-workspace', 'status-bar-clock:toggle': => @toggle()
-    console.log @state
-    @statusBarClockView = new StatusBarClockView()
-    @statusBarClockView.init()
+    console.log state
+    @statusBarClockView = new StatusBarClockView
+    @statusBarClockView.init(@state.timerIdle, @state.logfile)
 
   deactivate: ->
     console.log 'Clock was deactivated'
@@ -31,11 +37,12 @@ module.exports = StatusBarClock =
     @statusBarClockView.destroy()
     @statusBarTile?.destroy()
 
-  serialize:->
+  serialize: ->
     {
-      activateOnStart: atom.config.get('status-bar-clock.activateOnStart'),
-      timerIdle: atom.config.get('status-bar-clock.timerIdle'),
-      active: @active
+      activateOnStart: atom.config.get('status-bar-time-tracker.activateOnStart'),
+      timerIdle: atom.config.get('status-bar-time-tracker.timerIdle'),
+      active: @active,
+      logfile: atom.config.get('status-bar-time-tracker.logfile')
     }
 
   toggle: (active = undefined) ->
