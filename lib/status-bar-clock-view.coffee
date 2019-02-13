@@ -23,26 +23,27 @@ class StatusBarClockView extends HTMLElement
   activate: ->
     console.log 'activate'
     countdownTime = timerIdle*60
+    countTime = []
     fs.readFile(logfile,'utf-8', (err, data)->
       if err
         throw err
       lines = data.split('\n')
       lines.forEach((line) ->
         line = line.split(', ')
-        timestamps.push {
+        countTime.push {
           project: line[0],
           timestamp: parseInt(line[1]),
           delta: parseInt(line[2]),
           path: line[3]
         }
       )
-      activeTime = Math.round timestamps.filter((x)->!isNaN(x.delta)).map((x) ->
+      activeTime = Math.round countTime.filter((x)->!isNaN(x.delta)).map((x) ->
         x.delta
       ).reduce(((x, y) ->
         x + y
       ), 0) / 1000
     )
-
+    timestamps = []
     that = @
     @intervalId = setInterval @updateClock.bind(@), 1000
     @disposables = new CompositeDisposable
@@ -59,12 +60,20 @@ class StatusBarClockView extends HTMLElement
     atom.config.onDidChange 'status-bar-time-tracker.timerIdle', ({newValue, oldValue}) ->
       #console.log 'My configuration changed:', newValue, oldValue
       timerIdle = newValue
+    atom.config.onDidChange 'status-bar-time-tracker.logfile', ({newValue, oldValue}) ->
+      #console.log 'My configuration changed:', newValue, oldValue
+      logfile = newValue
     #console.log atom.project.getDirectories()
 
   deactivate: ->
     @disposables.dispose()
-    #console.log 'deactivate'
+    console.log 'deactivate'
     clearInterval @intervalId
+    timestamps = []
+    countdown = countdownTime
+    activeTime = 0
+    date = new Date
+    timestamp = date.getTime()
 
   calculateTime: ()->
     date = new Date
@@ -108,8 +117,10 @@ class StatusBarClockView extends HTMLElement
     if activeTime%60==0
       #save to storage
       #localStorage['status-bar-clock.timestamps'] = JSON.stringify(timestamps)
+      if !fs.existsSync(logfile)
+        timestamps.unshift(['project', 'timestamp', 'delta', 'file'])
       data = @json_to_csv(timestamps)
-      fs.appendFileSync(logfile, data);
+      fs.appendFileSync(logfile, data)
       #console.log home
       timestamps = []
     @textContent = @getTime(activeTime)
