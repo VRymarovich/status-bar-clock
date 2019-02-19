@@ -101,13 +101,19 @@ class StatusBarClockView extends HTMLElement
     date = time
     seconds = time%60
     minutes = Math.floor(time/60)%60
-    hour = Math.floor(time/3600)
+    hours = Math.floor(time/3600)%24
+    days = Math.floor(time/86400)
 
     minutes = '0' + minutes if minutes < 10
     seconds = '0' + seconds if seconds < 10
+    hours = '0' + hours if hours < 10
 
-    "#{hour}:#{minutes}:#{seconds}"
+    out = "#{hours}:#{minutes}:#{seconds}"
 
+    if days>0
+      out = "#{days}d " + out
+
+    out
   updateClock: ->
     date = new Date
     countdown--
