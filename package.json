@@ -14,7 +14,9 @@
     "atom": ">=1.0.0 <2.0.0"
   },
   "dependencies": {
-    "os-homedir": "^1.0.0"
+    "atom-space-pen-views": "^2.0.3",
+    "chartist": "^0.11.0",
+    "moment": "^2.24.0"
   },
   "consumedServices": {
     "status-bar": {

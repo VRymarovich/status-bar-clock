@@ -1,5 +1,6 @@
 {CompositeDisposable} = require 'atom'
 fs = require('fs')
+
 class StatusBarClockView extends HTMLElement
   countdownTime = 300
   countdown = countdownTime
@@ -7,17 +8,17 @@ class StatusBarClockView extends HTMLElement
   date = new Date
   timestamp = date.getTime()
   timestamps = []
-  logfile = ''
+  logfile = __dirname + '/../timetracker.log'
   timerIdle = 10
 
   constructor:->
 
   init: ->
-    logfile = atom.config.get('status-bar-time-tracker.logfile')
     timerIdle = atom.config.get('status-bar-time-tracker.timerIdle')
-    console.log 'init', logfile, timerIdle
     @disposables = new CompositeDisposable
     @classList.add('status-bar-clock', 'inline-block', 'icon-clock')
+    @.addEventListener "click", (event)->
+      atom.workspace.toggle 'atom://stats-info-panel'
     #@activate()
 
   activate: ->
@@ -38,7 +39,7 @@ class StatusBarClockView extends HTMLElement
           path: line[3]
         }
       )
-      activeTime = Math.round countTime.filter((x)->!isNaN(x.delta)).map((x) ->
+      activeTime = Math.round countTime.filter((x)->!isNaN(x.delta)).filter((x)->x.delta<1000000).map((x) ->
         x.delta
       ).reduce(((x, y) ->
         x + y
@@ -61,10 +62,6 @@ class StatusBarClockView extends HTMLElement
     atom.config.onDidChange 'status-bar-time-tracker.timerIdle', ({newValue, oldValue}) ->
       #console.log 'My configuration changed:', newValue, oldValue
       timerIdle = newValue
-    atom.config.onDidChange 'status-bar-time-tracker.logfile', ({newValue, oldValue}) ->
-      #console.log 'My configuration changed:', newValue, oldValue
-      logfile = newValue
-    #console.log atom.project.getDirectories()
 
   deactivate: ->
     @disposables.dispose()
@@ -89,9 +86,11 @@ class StatusBarClockView extends HTMLElement
         if match>-1
           project = path
     delta = date.getTime()-timestamp
+    if delta>countdownTime*1000
+      delta = countdownTime
     timestamps.push {
       project: project,
-      timestamp:date.getTime(),
+      timestamp: date.getTime(),
       delta: delta,
       path: atom.workspace.getActiveTextEditor()?.getPath(),
     }
@@ -112,8 +111,8 @@ class StatusBarClockView extends HTMLElement
 
     if days>0
       out = "#{days}d " + out
-
     out
+
   updateClock: ->
     date = new Date
     countdown--
@@ -121,14 +120,18 @@ class StatusBarClockView extends HTMLElement
       activeTime++
     if countdown==0
       @calculateTime()
-    if activeTime%60==0
+      #atom.beep()
+    if activeTime%60==0 and countdown>=0
+      atom.beep()
       #save to storage
       #localStorage['status-bar-clock.timestamps'] = JSON.stringify(timestamps)
       if !fs.existsSync(logfile)
         timestamps.unshift(['project', 'timestamp', 'delta', 'file'])
       data = @json_to_csv(timestamps)
-      fs.appendFileSync(logfile, data)
-      #console.log home
+      fs.appendFile(logfile, data, (err)->
+        if err
+          throw err
+      )
       timestamps = []
     @textContent = @getTime(activeTime)
 
@@ -138,6 +141,7 @@ class StatusBarClockView extends HTMLElement
       row = Object.values(timestamp).join(', ')
       line = line + row + '\n'
     return line
+
 module.exports = document.registerElement('status-bar-clock', prototype: StatusBarClockView.prototype, extends: 'div')
 ###
 

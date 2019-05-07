@@ -3,10 +3,10 @@
   {
     'label': 'Packages'
     'submenu': [
-      'label': 'Clock'
+      'label': 'Time Tracker'
       'submenu': [
         {
-          'label': 'Toggle'
+          'label': 'Enable'
           'command': 'status-bar-clock:toggle'
         }
       ]
