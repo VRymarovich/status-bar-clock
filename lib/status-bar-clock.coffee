@@ -1,6 +1,5 @@
 {CompositeDisposable} = require 'atom'
 StatusBarClockView = require './status-bar-clock-view'
-PanelPackageView = require './panel-package-view'
 StatsView  = require './stats-view'
 
 module.exports = StatusBarClock =
