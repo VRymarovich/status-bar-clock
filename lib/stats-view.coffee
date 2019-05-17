@@ -1,4 +1,4 @@
-Project_ = require 'underscore-plus'
+#ct-chartLineProject_ = require 'underscore-plus'
 {$, ScrollView} = require 'atom-space-pen-views'
 Chartist = require './chartist.js'
 {CompositeDisposable} = require 'atom'
@@ -10,10 +10,11 @@ logfile = __dirname + '/../timetracker.log'
 log = []
 projectLog = []
 
-chartist = null
 
-chartData = {}
-chartOptions = {
+lineChart = null
+
+lineChartData = {}
+lineChartOptions = {
   stackBars: true,
   height: 100,
   low:0,
@@ -23,6 +24,26 @@ chartOptions = {
       labelInterpolationFnc: (value) ->
         return moment(value).format('MMM D')
     }
+}
+
+pieChart = null
+pieChartData = {}
+pieChartOptions = {
+  #donut: true,
+  #donutWidth: 60,
+  #startAngle: 0,
+  #total: 100,
+  #showLabel: false,
+  height: 150,
+  labelInterpolationFnc: (value) ->
+    sum = pieChartData.series.reduce (a, b)->
+      return a+b
+    ,0
+    percent = Math.round(value / sum * 100)
+    if percent>1
+      return percent + '%'
+    else
+      return ''
 }
 
 fileLog = []
@@ -35,13 +56,28 @@ yesterday = new Date(timestamp.getFullYear(), timestamp.getMonth(), timestamp.ge
 lastWeek = new Date(timestamp.getFullYear(), timestamp.getMonth(), timestamp.getDate()-7).getTime()
 lastMonth = new Date(timestamp.getFullYear(), timestamp.getMonth()-1, timestamp.getDate()).getTime()
 
+convertMsToTime = (ms)->
+  seconds = Math.floor(ms/1000)%60
+  minutes = Math.floor(ms/1000/60)%60
+  hours = Math.floor(ms/1000/60/60)%24
+  days = Math.floor(ms/1000/86400)
+
+  minutes = '0' + minutes if minutes < 10
+  seconds = '0' + seconds if seconds < 10
+  hours = '0' + hours if hours < 10
+
+  out = "#{hours}:#{minutes}:#{seconds}"
+
+  if days>0
+    out = "#{days}d " + out
+  out
+
 module.exports =
 class StatsView extends ScrollView
   @activate: ->
     new StatsView
-
   @content: ->
-    @div class: 'stats-wrapper', tabindex: -1, =>
+    @div class: 'stats-wrapper m-3', tabindex: -1, =>
       @div class: 'row', =>
         @div class: 'col-sm-4', =>
           @h5 class: 'fileName', id: 'fileName'
@@ -86,6 +122,13 @@ class StatsView extends ScrollView
               @td =>
                 @b 'Last Month Project Time: '
               @td id: 'lastMonthProjectTime'
+          @div class: 'row m-1', =>
+            @div class: 'col-sm-4', =>
+              @div class: 'ct-chartPie ct-perfect-fourth', id: 'chartPie'
+            @div class: 'col-sm-8', =>
+              @b id: 'fileDetailsTitle', 'Time By Files:'
+              @div =>
+                @div id: 'fileDetailsData'
         @div class: 'col-sm-8', =>
           @div id:'trackerButtons', =>
             @div class: 'btn-group center', =>
@@ -102,7 +145,7 @@ class StatsView extends ScrollView
               @button outlet: 'lastMonthProjectTimeBut', class: 'btn', click: 'showLastMonthProjectTimeChart', 'Last Month Project Time'
             @h6 id:'detailsTitle', 'Title'
           @div id: 'timeByDays'
-          @div class: 'ct-chart ct-perfect-fourth', id: 'chart'
+          @div class: 'ct-chartLine ct-perfect-fourth', id: 'chartLine'
 
   initialize: ->
     super
@@ -120,12 +163,12 @@ class StatsView extends ScrollView
       that.update()
 
     atom.workspace.getCenter().observeActivePaneItem (item) ->
-      console.log 'asdfa', item.getFileName()
       if !atom.workspace.isTextEditor(item)
         return
       setTimeout ->
         that.loadLogFile item
         $('#detailsTitle').text 'Total Project Time'
+        $('#fileDetailsTitle').text 'Total Project Time By Files'
         that.drawChart projectLog, 'days'
       , 100
 
@@ -164,15 +207,14 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#totalFileTime').text Math.floor(totalFileTime/1000/60/60)+'h '+Math.floor(totalFileTime/1000/60)%60+'m '+Math.floor(totalFileTime/1000)%60+'s'
-
+    $('#totalFileTime').text convertMsToTime totalFileTime
     todayFileTime = fileLog.filter (x)-> x.timestamp<tomorrow && x.timestamp>=today
     .map (x)-> x.delta
     .reduce (acc,cur)->
       acc+cur
     , 0
 
-    $('#todayFileTime').text Math.floor(todayFileTime/1000/60/60)+'h '+Math.floor(todayFileTime/1000/60)%60+'m '+Math.floor(todayFileTime/1000)%60+'s'
+    $('#todayFileTime').text convertMsToTime todayFileTime
 
     yesterdayFileTime = fileLog.filter (x)-> x.timestamp<today && x.timestamp>=yesterday
     .map (x)-> x.delta
@@ -180,7 +222,7 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#yesterdayFileTime').text Math.floor(yesterdayFileTime/1000/60/60)+'h '+Math.floor(yesterdayFileTime/1000/60)%60+'m '+Math.floor(yesterdayFileTime/1000)%60+'s'
+    $('#yesterdayFileTime').text convertMsToTime yesterdayFileTime
 
     lastWeekFileTime = fileLog.filter (x)-> x.timestamp<today && x.timestamp>=lastWeek
     .map (x)-> x.delta
@@ -188,7 +230,7 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#lastWeekFileTime').text Math.floor(lastWeekFileTime/1000/60/60)+'h '+Math.floor(lastWeekFileTime/1000/60)%60+'m '+Math.floor(lastWeekFileTime/1000)%60+'s'
+    $('#lastWeekFileTime').text convertMsToTime lastWeekFileTime
 
     lastMonthFileTime = fileLog.filter (x)-> x.timestamp<today && x.timestamp>=lastMonth
     .map (x)-> x.delta
@@ -196,7 +238,7 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#lastMonthFileTime').text Math.floor(lastMonthFileTime/1000/60/60)+'h '+Math.floor(lastMonthFileTime/1000/60)%60+'m '+Math.floor(lastMonthFileTime/1000)%60+'s'
+    $('#lastMonthFileTime').text convertMsToTime lastMonthFileTime
 
     projectLog = log.filter (x)-> x.project==project
 
@@ -205,7 +247,7 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#totalProjectTime').text Math.floor(totalProjectTime/1000/60/60)+'h '+Math.floor(totalProjectTime/1000/60)%60+'m '+Math.floor(totalProjectTime/1000)%60+'s'
+    $('#totalProjectTime').text convertMsToTime totalProjectTime
 
     todayProjectTime = projectLog.filter (x)-> x.timestamp<tomorrow && x.timestamp>=today
     .map (x)-> x.delta
@@ -213,7 +255,7 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#todayProjectTime').text Math.floor(todayProjectTime/1000/60/60)+'h '+Math.floor(todayProjectTime/1000/60)%60+'m '+Math.floor(todayProjectTime/1000)%60+'s'
+    $('#todayProjectTime').text convertMsToTime todayProjectTime
 
     yesterdayProjectTime = projectLog.filter (x)-> x.timestamp<today && x.timestamp>=yesterday
     .map (x)-> x.delta
@@ -221,7 +263,7 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#yesterdayProjectTime').text Math.floor(yesterdayProjectTime/1000/60/60)+'h '+Math.floor(yesterdayProjectTime/1000/60)%60+'m '+Math.floor(yesterdayProjectTime/1000)%60+'s'
+    $('#yesterdayProjectTime').text convertMsToTime yesterdayProjectTime
 
     lastWeekProjectTime = projectLog.filter (x)-> x.timestamp<today && x.timestamp>=lastWeek
     .map (x)-> x.delta
@@ -229,7 +271,7 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#lastWeekProjectTime').text Math.floor(lastWeekProjectTime/1000/60/60)+'h '+Math.floor(lastWeekProjectTime/1000/60)%60+'m '+Math.floor(lastWeekProjectTime/1000)%60+'s'
+    $('#lastWeekProjectTime').text convertMsToTime lastWeekProjectTime
 
     lastMonthProjectTime = projectLog.filter (x)-> x.timestamp<today && x.timestamp>=lastMonth
     .map (x)-> x.delta
@@ -237,7 +279,7 @@ class StatsView extends ScrollView
       acc+cur
     , 0
 
-    $('#lastMonthProjectTime').text Math.floor(lastMonthProjectTime/1000/60/60)+'h '+Math.floor(lastMonthProjectTime/1000/60)%60+'m '+Math.floor(lastMonthProjectTime/1000)%60+'s'
+    $('#lastMonthProjectTime').text convertMsToTime lastMonthProjectTime
 
     projectFilesTotalTime = projectLog.reduce (accumulator, currentValue, index, array)->
       path = currentValue.path.replace currentValue.project+'/', ''
@@ -251,18 +293,24 @@ class StatsView extends ScrollView
   update: ->
     pane = atom.workspace.getBottomDock().getActivePane()
     height = pane.parent.element.clientHeight-$('#timeByDays').height()-$('#trackerButtons').height()-30
-    chartOptions.height = height
-    if chartist
-      chartist.update(chartData, chartOptions)
+    lineChartOptions.height = height
+    if lineChart
+      lineChart.update lineChartData, lineChartOptions
     else
-      chartData = {
+      lineChartData = {
         labels: [],
         series: [
           []
         ]
       }
-      chartist = new Chartist.Line '.ct-chart', chartData, chartOptions
-
+      lineChart = new Chartist.Line '.ct-chartLine', lineChartData, lineChartOptions
+    if pieChart
+      pieChart.update pieChartData, pieChartOptions
+    else
+      pieChartData = {
+        series: [20, 10, 30, 40]
+      }
+      pieChart = new Chartist.Pie '.ct-chartPie', pieChartData, pieChartOptions
   drawChart: (data, bins)->
     timeByBins = data.reduce (accumulator, currentValue, index, array)->
       date = new Date(currentValue.timestamp)
@@ -281,7 +329,7 @@ class StatsView extends ScrollView
       return accumulator
     ,{}
     timeByBins = Object.keys(timeByBins).map (key) ->
-        return {'x': key, 'y': Math.abs(Math.round(timeByBins[key]/1000/60))}
+        return {'x': key, 'y': timeByBins[key]}
 
     timeByBinsText = timeByBins.map (x)->
       date = new Date(parseInt(x.x))
@@ -289,76 +337,103 @@ class StatsView extends ScrollView
         bin = moment(date).format('MMM D HH')
       if bins=='days'
         bin = moment(date).format('MMM D')
-      return bin + ': '+x.y + ' min'
+      return bin + ': '+convertMsToTime x.y
     .join ', '
 
     $('#timeByDays').text timeByBinsText
 
     #values = timeByBins.map (x)->x.value
     #labels = timeByBins.map (x)->x.date
-    '''
-    chartData = {
-      labels: labels,
+
+    lineChartData = {
       series: [
-        values
+        data: timeByBins.map (value)-> return {'x': value.x, 'y': value.y/1000/60}
       ]
     }
-    '''
-    chartData = {
-      series: [
-        data:timeByBins
-      ]
-    }
-    #console.log chartData
+
+    timeByFiles = data.reduce (accumulator, currentValue, index, array)->
+      key=currentValue.path.replace currentValue.project+'/', ''
+      if accumulator[key]==undefined
+        accumulator[key]=currentValue.delta
+      else
+        accumulator[key]=currentValue.delta+accumulator[key]
+      return accumulator
+    ,{}
+    timeByFiles = Object.keys(timeByFiles).map (key) ->
+        return {value: timeByFiles[key], key: key}
+    timeByFilesSum = timeByFiles.reduce (acc, cur)->
+      return acc+cur.value
+    ,0
+    timeByFiles = timeByFiles.filter (element, index, array)->
+      percent = Math.round(element.value / timeByFilesSum * 100)
+      if percent>1
+        return true
+      else
+        return false
+    timeByFilesText = timeByFiles.map (x)->
+      return x.key+': '+convertMsToTime x.value
+    .join ', \n'
+    $('#fileDetailsData').html timeByFilesText
+    pieChartData = {series:timeByFiles.map (key)->key.value}
 
     @update()
 
   showTotalProjectTimeChart: ->
     #console.log('pressed showTotalProjectTimeChart')
     $('#detailsTitle').text 'Total Project Time'
+    $('#fileDetailsTitle').text 'Total Project Time By Files'
     @drawChart projectLog, 'days'
 
   showTodayProjectTimeChart: ->
     $('#detailsTitle').text 'Today Project Time'
+    $('#fileDetailsTitle').text 'Today Project Time By Files'
     log = projectLog.filter (x)-> x.timestamp<tomorrow && x.timestamp>=today
     @drawChart log, 'hours'
 
   showYesterdayProjectTimeChart: ->
     $('#detailsTitle').text 'Yesterday Project Time'
+    $('#fileDetailsTitle').text 'Yesterday Project Time By Files'
     log = projectLog.filter (x)-> x.timestamp<today && x.timestamp>=yesterday
     @drawChart log, 'hours'
 
   showLastWeekProjectTimeChart: ->
     $('#detailsTitle').text 'Last Week Project Time'
+    $('#fileDetailsTitle').text 'Last Week Project Time By Files'
     log = projectLog.filter (x)-> x.timestamp<today && x.timestamp>=lastWeek
     @drawChart log, 'days'
 
   showLastMonthProjectTimeChart: ->
     $('#detailsTitle').text 'Last Month Project Time'
+    $('#fileDetailsTitle').text 'Last Month Project Time By Files'
     log = projectLog.filter (x)-> x.timestamp<today && x.timestamp>=lastMonth
     @drawChart log, 'days'
 
   showTotalFileTimeChart: ->
     $('#detailsTitle').text 'Total File Time'
+    $('#fileDetailsTitle').text ''
     @drawChart fileLog, 'days'
 
   showTodayFileTimeChart: ->
     $('#detailsTitle').text 'Today File Time'
+    $('#fileDetailsTitle').text ''
     log = fileLog.filter (x)-> x.timestamp<tomorrow && x.timestamp>=today
     @drawChart log, 'hours'
 
   showYesterdayFileTimeChart: ->
     $('#detailsTitle').text 'Yesterday File Time'
+    $('#fileDetailsTitle').text ''
     log = fileLog.filter (x)-> x.timestamp<today && x.timestamp>=yesterday
     @drawChart log, 'hours'
 
   showLastWeekFileTimeChart: ->
     $('#detailsTitle').text 'Last Week File Time'
+    $('#fileDetailsTitle').text ''
     log = fileLog.filter (x)-> x.timestamp<today && x.timestamp>=lastWeek
     @drawChart log, 'days'
 
   showLastMonthFileTimeChart: ->
     $('#detailsTitle').text 'Last Month File Time'
+    $('#fileDetailsTitle').text ''
     log = fileLog.filter (x)-> x.timestamp<today && x.timestamp>=lastMonth
     @drawChart log, 'days'
 
